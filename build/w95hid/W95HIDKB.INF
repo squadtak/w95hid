@@ -1,0 +1,49 @@
+; W95HIDKB.INF - HID keyboard (child node made by HIDCLASS) for Windows 95 OSR2.1
+; Stage K0: loads the experiment KBDHID.VXD.  Same layout as the HIDKeyboard
+; section of the Win98 KEYBOARD.INF.
+
+[Version]
+Signature="$CHICAGO$"
+Class=Keyboard
+ClassGUID={4d36e96b-e325-11ce-bfc1-08002be10318}
+Provider=%SQUAD%
+
+[SourceDisksNames]
+1=%DiskName%,,0
+
+[SourceDisksFiles]
+kbdhid.vxd=1
+
+[DestinationDirs]
+DefaultDestDir=11
+HIDKeyboard.Copy=11
+
+[ControlFlags]
+
+[Manufacturer]
+%Generic%=KBD
+
+[KBD]
+%HID_DEVICE_SYSTEM_KEYBOARD%=HIDKeyboard,HID_DEVICE_SYSTEM_KEYBOARD
+%HID_DEVICE_SYSTEM_CONSUMER%=HIDKeyboard,HID_DEVICE_SYSTEM_CONSUMER
+
+; kbdhid.vxd is copied only when it is missing (flag 16 = do not overwrite).  W95HID.INF
+; has already put it in SYSTEM, so a new device finds it there and never asks where the
+; files are.
+[HIDKeyboard]
+CopyFiles=HIDKeyboard.Copy
+AddReg=HIDKeyboard.AddReg
+
+[HIDKeyboard.Copy]
+kbdhid.vxd,,,16
+
+[HIDKeyboard.AddReg]
+HKR,,DevLoader,,*ntkern
+HKR,,NTMPDriver,,"kbdhid.vxd"
+
+[Strings]
+SQUAD="Takuya Ohara"
+DiskName="USB HID Class Driver for Windows 95 Install disk"
+Generic="(Standard keyboards)"
+HID_DEVICE_SYSTEM_KEYBOARD="HID-compliant keyboard"
+HID_DEVICE_SYSTEM_CONSUMER="HID-compliant consumer control device"

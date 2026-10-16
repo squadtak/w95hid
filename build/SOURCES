@@ -1,0 +1,9 @@
+#
+# "build" collects the finished files into build\w95hid: the makefile copies every
+# driver built by the other directories next to the INF files kept there.  Build
+# only has to run it.
+#
+TARGETNAME=BUILDOUT
+TARGETTYPE=NOTARGET
+TARGETPATH=obj
+SOURCES=

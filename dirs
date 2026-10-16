@@ -1,0 +1,35 @@
+#
+# DIRS lists the subdirectories "build" descends into (in this order):
+#
+#     cd hid95
+#     build -cZ
+#
+# builds everything (BASEDIR = the 98DDK root, MSVC 5.0 ml/cl/link on the PATH):
+#
+#   hidparse   HIDPARSE.SYS   HidP_* (hidclass links its import library)
+#   hidclass   HIDCLASS.SYS
+#   hidusb     HIDUSB.SYS
+#   hidext     HIDEXT.VXD     shutdown notice for HIDCLASS (static VxD)
+#   kbdhid     KBDHID.VXD     keyboard client
+#   mouhid     MOUHID.VXD     mouse client
+#   hiddll     HID.DLL        the user-mode API (HidD_*, HidP_*) for Win32 programs
+#   hidtest    HIDTEST.EXE    Win32 test tool (uses HID.DLL, \\.\HIDn)
+#   hidserv    HIDSERV.EXE    HID Audio Control Service: the volume keys (Consumer Control)
+#                             of a HID device -> the mixer
+#   build      (no code)      collects the finished set in build\w95hid: the INF files
+#                             live there and the built drivers are copied next to them
+#
+# The VxD and tool directories have an nmake makefile of their own (not the DDK
+# makefile.def); their SOURCES only says "no target" so that build runs it.
+# The experiment directories e2 and k0 are not built here.
+#
+DIRS=hidparse \
+     hidclass \
+     hidusb \
+     hidext \
+     kbdhid \
+     mouhid \
+     hiddll \
+     hidtest \
+     hidserv \
+     build

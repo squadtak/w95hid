@@ -1,0 +1,60 @@
+; W95HIDMS.INF - HID mouse (child node made by HIDCLASS) for Windows 95 OSR2.1
+; Same layout as the HIDMouse section of the Win98 MOUSE.INF.
+
+[Version]
+Signature="$CHICAGO$"
+Class=Mouse
+ClassGUID={4d36e96f-e325-11ce-bfc1-08002be10318}
+Provider=%SQUAD%
+
+; Install class "Mouse" (the Win98 MSMOUSE.INF layout; only used when the class
+; key does not exist yet, so the device can never end up classless)
+[ClassInstall]
+AddReg=MouseReg
+
+[MouseReg]
+HKR,,,,%MouseClassName%
+HKR,,Installer,,"SetupX.Dll, Mouse_ClassInstaller"
+HKR,,Icon,,"-2"
+
+; The Mouse class installer relies on this section being empty.
+[EmptySection]
+
+[SourceDisksNames]
+1=%DiskName%,,0
+
+[SourceDisksFiles]
+mouhid.vxd=1
+
+[DestinationDirs]
+DefaultDestDir=11
+HIDMouse.Copy=11
+
+[ControlFlags]
+
+[Manufacturer]
+%Generic%=MOU
+
+[MOU]
+%HID_DEVICE_SYSTEM_MOUSE%=HIDMouse,HID_DEVICE_SYSTEM_MOUSE
+
+; mouhid.vxd is copied only when it is missing (flag 16 = do not overwrite).  W95HID.INF
+; has already put it in SYSTEM, so a new device finds it there and never asks where the
+; files are.
+[HIDMouse]
+CopyFiles=HIDMouse.Copy
+AddReg=HIDMouse.AddReg
+
+[HIDMouse.Copy]
+mouhid.vxd,,,16
+
+[HIDMouse.AddReg]
+HKR,,DevLoader,,*ntkern
+HKR,,NTMPDriver,,"mouhid.vxd"
+
+[Strings]
+SQUAD="Takuya Ohara"
+DiskName="USB HID Class Driver for Windows 95 Install disk"
+MouseClassName="Mouse"
+Generic="(Standard mice)"
+HID_DEVICE_SYSTEM_MOUSE="HID-compliant mouse"

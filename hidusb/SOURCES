@@ -1,0 +1,17 @@
+TARGETNAME=HIDUSB
+TARGETTYPE=DRIVER
+TARGETPATH=obj
+DRIVERTYPE=WDM
+
+INCLUDES=$(BASEDIR)\inc; \
+         $(BASEDIR)\inc\win98; \
+         $(BASEDIR)\src\hid\inc
+
+TARGETLIBS=$(BASEDIR)\lib\*\free\usbd.lib \
+           $(BASEDIR)\lib\*\free\hidclass.lib
+
+SOURCES=hidusb.c \
+        hidusb.rc
+
+# makefile.inc: copy HIDUSB.SYS to ..\driver once it is linked
+NTTARGETFILES=CopyToDriver

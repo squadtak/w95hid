@@ -1,0 +1,6 @@
+#define HID_FILETYPE        3
+#define HID_FILESUBTYPE     7
+#define HID_DESCRIPTION     "MINI NT HID PARSER"
+#define HID_INTERNALNAME    "HIDPARSE.SYS"
+#define HID_ORIGINALNAME    "HIDPARSE.SYS"
+#include "..\verinfo.ver"

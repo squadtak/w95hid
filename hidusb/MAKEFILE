@@ -1,0 +1,14 @@
+#
+# Build with the 98DDK "build" utility from this directory (same as the
+# DDK's src\usb\bulkusb sample); edit SOURCES, not this file.
+#
+
+# The linker writes to obj\i386\free\ but build doesn't create it.
+!if [if not exist obj$(BUILD_ALT_DIR) mkdir obj$(BUILD_ALT_DIR)]
+!endif
+!if [if not exist obj$(BUILD_ALT_DIR)\i386 mkdir obj$(BUILD_ALT_DIR)\i386]
+!endif
+!if [if not exist obj$(BUILD_ALT_DIR)\i386\free mkdir obj$(BUILD_ALT_DIR)\i386\free]
+!endif
+
+!INCLUDE $(NTMAKEENV)\makefile.def

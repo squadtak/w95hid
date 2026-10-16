@@ -1,0 +1,6 @@
+#define HID_FILETYPE        2
+#define HID_FILESUBTYPE     0
+#define HID_DESCRIPTION     "Hid User Library"
+#define HID_INTERNALNAME    "HID.DLL"
+#define HID_ORIGINALNAME    "HID.DLL"
+#include "..\verinfo.ver"

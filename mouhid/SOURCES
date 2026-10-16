@@ -1,0 +1,8 @@
+#
+# MOUHID.VXD is built by the nmake rules in "makefile" (ml + cl + link -VXD),
+# not by the DDK makefile.def; build only has to run that makefile.
+#
+TARGETNAME=MOUHID
+TARGETTYPE=NOTARGET
+TARGETPATH=obj
+SOURCES=

@@ -1,0 +1,8 @@
+#define HID_FILETYPE        5
+#define HID_FILESUBTYPE     0
+#define HID_FILEOS          0x10004L
+#define HID_VXD
+#define HID_DESCRIPTION     "KBDHID Virtual Device"
+#define HID_INTERNALNAME    "KBDHID"
+#define HID_ORIGINALNAME    "KBDHID.VXD"
+#include "..\verinfo.ver"

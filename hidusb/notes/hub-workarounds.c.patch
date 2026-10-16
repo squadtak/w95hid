@@ -1,0 +1,256 @@
+--- hidusb.c	2026-10-13 11:40:29.457059400 +0900
++++ notes/hidusb.c.hub-workarounds	2026-10-13 11:40:23.407654000 +0900
+@@ -158,6 +158,143 @@
+     DeliverReport(de, tmp, len);
+ }
+ 
++/*
++ * Control-pipe polling.  A low-speed keyboard behind a full-speed hub (seen:
++ * Terminus FE1.1s, bus powered) answers control transfers but never the
++ * interrupt IN token that the host controller sends right after the SOF; every
++ * interrupt transfer ends in "device not responding".  GET_REPORT(Input)
++ * through the control pipe works there, so the state is read every 16 ms and
++ * a report is passed on when it changed.
++ */
++#define CTL_POLL_100NS      (-160000L)      /* 16 ms */
++
++static void CtlArm(PIFSLOT s)
++{
++    LARGE_INTEGER due;
++
++    due.QuadPart = CTL_POLL_100NS;
++    InterlockedExchange((PLONG)&s->PollActive, 1);
++    KeSetTimer(&s->CtlTimer, due, &s->CtlDpc);
++}
++
++static NTSTATUS NTAPI CtlComplete(PDEVICE_OBJECT dev, PIRP irp, PVOID ctx)
++{
++    PIFSLOT s = (PIFSLOT)ctx;
++    NTSTATUS st = irp->IoStatus.Status;
++    ULONG got = s->CtlUrb->UrbControlVendorClassRequest.TransferBufferLength;
++
++    UNREFERENCED_PARAMETER(dev);
++
++    if (NT_SUCCESS(st)) {
++        s->CtlErrors = 0;
++        s->Reports++;
++        if (got > s->InMaxPacket)
++            got = s->InMaxPacket;
++        if (got > sizeof(s->LastReport)) {
++            DeliverSlot(s, s->PollBuf, got);    /* long report: no change detection */
++        } else if (got != s->LastLen ||
++                   RtlCompareMemory(s->LastReport, s->PollBuf, got) != got) {
++            LogHex(s->Index == 0 ? "report" : s->Index == 1 ? "report1" : "report2",
++                   s->PollBuf, got);
++            s->LastLen = got;
++            RtlCopyMemory(s->LastReport, s->PollBuf, got);
++            DeliverSlot(s, s->PollBuf, got);
++        }
++    } else {
++        s->CtlErrors++;
++        if (s->CtlErrors <= 3)
++            HIDDBG(("[HIDUSB] if%u GET_REPORT failed %x (%u)\n", s->Index, st, s->CtlErrors));
++    }
++
++    if (s->Stopping || st == STATUS_CANCELLED || s->CtlErrors >= 20) {
++        InterlockedExchange((PLONG)&s->PollActive, 0);
++        KeSetEvent(&s->PollIdle, 0, FALSE);
++    } else {
++        CtlArm(s);
++    }
++    return STATUS_MORE_PROCESSING_REQUIRED;
++}
++
++static VOID NTAPI CtlDpcRoutine(PKDPC dpc, PVOID ctx, PVOID arg1, PVOID arg2)
++{
++    PIFSLOT s = (PIFSLOT)ctx;
++    PDEVEXT de = s->De;
++    PIRP irp = s->PollIrp;
++    PIO_STACK_LOCATION next;
++    CCHAR stack = de->TopOfStack->StackSize;
++
++    UNREFERENCED_PARAMETER(dpc);
++    UNREFERENCED_PARAMETER(arg1);
++    UNREFERENCED_PARAMETER(arg2);
++
++    if (s->Stopping) {
++        InterlockedExchange((PLONG)&s->PollActive, 0);
++        KeSetEvent(&s->PollIdle, 0, FALSE);
++        return;
++    }
++    IoInitializeIrp(irp, (USHORT)IoSizeOfIrp(stack), stack);
++    RtlZeroMemory(s->CtlUrb, sizeof(struct _URB_CONTROL_VENDOR_OR_CLASS_REQUEST));
++    UsbBuildVendorRequest(s->CtlUrb, URB_FUNCTION_CLASS_INTERFACE,
++        (USHORT)sizeof(struct _URB_CONTROL_VENDOR_OR_CLASS_REQUEST),
++        USBD_TRANSFER_DIRECTION_IN | USBD_SHORT_TRANSFER_OK, 0,
++        0x01,                                   /* GET_REPORT */
++        0x0100,                                 /* Input report, id 0 */
++        s->IfDesc->bInterfaceNumber, s->PollBuf, NULL, s->InMaxPacket, NULL);
++
++    next = IoGetNextIrpStackLocation(irp);
++    next->MajorFunction = IRP_MJ_INTERNAL_DEVICE_CONTROL;
++    next->Parameters.DeviceIoControl.IoControlCode = IOCTL_INTERNAL_USB_SUBMIT_URB;
++    next->Parameters.Others.Argument1 = s->CtlUrb;
++    IoSetCompletionRoutine(irp, CtlComplete, s, TRUE, TRUE, TRUE);
++    IoCallDriver(de->TopOfStack, irp);
++}
++
++/* A failed transfer leaves the pipe halted in the USBD: until it is reset, new
++ * transfers queue up and nothing ever arrives (a hub-attached keyboard that
++ * reported "device not responding" once and then stayed silent). */
++static NTSTATUS NTAPI ResetComplete(PDEVICE_OBJECT dev, PIRP irp, PVOID ctx)
++{
++    PIFSLOT s = (PIFSLOT)ctx;
++    NTSTATUS st = irp->IoStatus.Status;
++
++    UNREFERENCED_PARAMETER(dev);
++    HIDDBG(("[HIDUSB] if%u RESET_PIPE: %x\n", s->Index, st));
++    if (s->Stopping || st == STATUS_CANCELLED) {
++        InterlockedExchange((PLONG)&s->PollActive, 0);
++        KeSetEvent(&s->PollIdle, 0, FALSE);
++    } else {
++        PollSubmit(s);
++    }
++    return STATUS_MORE_PROCESSING_REQUIRED;
++}
++
++static void PollReset(PIFSLOT s)
++{
++    PDEVEXT de = s->De;
++    PIRP irp = s->PollIrp;
++    PIO_STACK_LOCATION next;
++    CCHAR stack = de->TopOfStack->StackSize;
++
++    if (!s->ResetUrb) {                         /* cannot reset: just carry on */
++        PollSubmit(s);
++        return;
++    }
++    IoInitializeIrp(irp, (USHORT)IoSizeOfIrp(stack), stack);
++    RtlZeroMemory(s->ResetUrb, sizeof(struct _URB_PIPE_REQUEST));
++    /* the OSR2.1 USBD wants exactly 0x14 bytes (header + pipe handle); the 98DDK
++     * structure has a Reserved field behind that and says 0x18 -> STATUS_INVALID_PARAMETER */
++    s->ResetUrb->UrbHeader.Length = 0x14;
++    s->ResetUrb->UrbHeader.Function = URB_FUNCTION_RESET_PIPE;
++    s->ResetUrb->UrbPipeRequest.PipeHandle = s->InPipe;
++
++    next = IoGetNextIrpStackLocation(irp);
++    next->MajorFunction = IRP_MJ_INTERNAL_DEVICE_CONTROL;
++    next->Parameters.DeviceIoControl.IoControlCode = IOCTL_INTERNAL_USB_SUBMIT_URB;
++    next->Parameters.Others.Argument1 = s->ResetUrb;
++    IoSetCompletionRoutine(irp, ResetComplete, s, TRUE, TRUE, TRUE);
++    IoCallDriver(de->TopOfStack, irp);
++}
++
+ static NTSTATUS NTAPI PollComplete(PDEVICE_OBJECT dev, PIRP irp, PVOID ctx)
+ {
+     PIFSLOT s = (PIFSLOT)ctx;
+@@ -188,9 +325,20 @@
+     }
+ 
+     /* stop on request, on cancel, or after repeated errors (no spinning) */
+-    if (s->Stopping || st == STATUS_CANCELLED || s->PollErrors >= 3) {
++    if (s->Stopping || st == STATUS_CANCELLED) {
+         InterlockedExchange((PLONG)&s->PollActive, 0);
+         KeSetEvent(&s->PollIdle, 0, FALSE);
++    } else if (!NT_SUCCESS(st) && !s->UsesIds && s->Reports == 0 && s->PollErrors >= 2) {
++        HIDDBG(("[HIDUSB] if%u: the interrupt pipe never answers, polling with GET_REPORT\n",
++                s->Index));
++        s->CtlMode = TRUE;
++        s->CtlErrors = 0;
++        CtlArm(s);
++    } else if (s->PollErrors >= 3) {
++        InterlockedExchange((PLONG)&s->PollActive, 0);
++        KeSetEvent(&s->PollIdle, 0, FALSE);
++    } else if (!NT_SUCCESS(st)) {
++        PollReset(s);                           /* then it polls again */
+     } else {
+         PollSubmit(s);
+     }
+@@ -202,6 +350,10 @@
+     if (!s->PollIrp)
+         return;
+     InterlockedExchange((PLONG)&s->Stopping, 1);
++    if (s->CtlMode && KeCancelTimer(&s->CtlTimer)) {    /* the timer had not fired yet */
++        InterlockedExchange((PLONG)&s->PollActive, 0);
++        KeSetEvent(&s->PollIdle, 0, FALSE);
++    }
+     if (s->PollActive) {
+         LARGE_INTEGER timeout;
+         IoCancelIrp(s->PollIrp);
+@@ -220,6 +372,8 @@
+     s->PollIrp = NULL;
+     if (s->PollUrb) { ExFreePool(s->PollUrb); s->PollUrb = NULL; }
+     if (s->PollBuf) { ExFreePool(s->PollBuf); s->PollBuf = NULL; }
++    if (s->ResetUrb) { ExFreePool(s->ResetUrb); s->ResetUrb = NULL; }
++    if (s->CtlUrb) { ExFreePool(s->CtlUrb); s->CtlUrb = NULL; }
+ }
+ 
+ static NTSTATUS PollStart(PIFSLOT s)
+@@ -232,7 +386,12 @@
+     s->PollIrp = IoAllocateIrp(stack, FALSE);
+     s->PollUrb = (PURB)HidAlloc(sizeof(struct _URB_BULK_OR_INTERRUPT_TRANSFER));
+     s->PollBuf = (PUCHAR)HidAlloc(s->InMaxPacket ? s->InMaxPacket : 8);
+-    if (!s->PollIrp || !s->PollUrb || !s->PollBuf) {
++    s->ResetUrb = (PURB)HidAlloc(sizeof(struct _URB_PIPE_REQUEST));
++    s->CtlUrb = (PURB)HidAlloc(sizeof(struct _URB_CONTROL_VENDOR_OR_CLASS_REQUEST));
++    s->CtlMode = FALSE;
++    KeInitializeTimer(&s->CtlTimer);
++    KeInitializeDpc(&s->CtlDpc, CtlDpcRoutine, s);
++    if (!s->PollIrp || !s->PollUrb || !s->PollBuf || !s->CtlUrb) {
+         PollStop(s);
+         return STATUS_INSUFFICIENT_RESOURCES;
+     }
+@@ -251,6 +410,17 @@
+             d->bDeviceSubClass, d->bDeviceProtocol, d->bMaxPacketSize0));
+ }
+ 
++/* sleep: a wait on an event nobody signals, with a time-out */
++static void DelayMs(ULONG ms)
++{
++    KEVENT ev;
++    LARGE_INTEGER t;
++
++    KeInitializeEvent(&ev, NotificationEvent, FALSE);
++    t.QuadPart = -(LONGLONG)ms * 10000;
++    KeWaitForSingleObject(&ev, Suspended, KernelMode, FALSE, &t);
++}
++
+ static NTSTATUS ReadConfiguration(PDEVEXT de)
+ {
+     ULONG siz = sizeof(USB_CONFIGURATION_DESCRIPTOR) + 512, got;
+@@ -664,16 +834,31 @@
+     de->DevDesc = (PUSB_DEVICE_DESCRIPTOR)HidAlloc(sizeof(USB_DEVICE_DESCRIPTOR));
+     if (!de->DevDesc)
+         return STATUS_INSUFFICIENT_RESOURCES;
+-    st = GetDescriptor(de, URB_FUNCTION_GET_DESCRIPTOR_FROM_DEVICE,
+-                       USB_DEVICE_DESCRIPTOR_TYPE, 0, 0, de->DevDesc,
+-                       sizeof(USB_DEVICE_DESCRIPTOR), &got);
++    /* behind a hub the device may not answer yet right after its port was reset
++     * (seen: STALL/data error on the very first request): try again a few times */
++    for (i = 0; i < 6; i++) {
++        st = GetDescriptor(de, URB_FUNCTION_GET_DESCRIPTOR_FROM_DEVICE,
++                           USB_DEVICE_DESCRIPTOR_TYPE, 0, 0, de->DevDesc,
++                           sizeof(USB_DEVICE_DESCRIPTOR), &got);
++        if (NT_SUCCESS(st))
++            break;
++        HIDDBG(("[HIDUSB] GET_DESCRIPTOR(device) try %u failed %x\n", i, st));
++        DelayMs(250);
++    }
+     if (!NT_SUCCESS(st)) {
+         HIDDBG(("[HIDUSB] GET_DESCRIPTOR(device) failed %x\n", st));
+         return st;
+     }
+     LogDeviceDescriptor(de->DevDesc);
+ 
+-    st = ReadConfiguration(de);
++    for (i = 0; i < 4; i++) {
++        st = ReadConfiguration(de);
++        if (NT_SUCCESS(st))
++            break;
++        HIDDBG(("[HIDUSB] GET_DESCRIPTOR(config) try %u failed %x\n", i, st));
++        if (de->ConfigDesc) { ExFreePool(de->ConfigDesc); de->ConfigDesc = NULL; }
++        DelayMs(250);
++    }
+     if (!NT_SUCCESS(st)) {
+         HIDDBG(("[HIDUSB] GET_DESCRIPTOR(config) failed %x\n", st));
+         return st;

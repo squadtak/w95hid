@@ -1,0 +1,18 @@
+--- hidusb.h	2026-10-13 11:40:29.481864100 +0900
++++ notes/hidusb.h.hub-workarounds	2026-10-13 11:40:23.483198000 +0900
+@@ -79,6 +79,15 @@
+     PIRP                            PollIrp;
+     PURB                            PollUrb;
+     PUCHAR                          PollBuf;
++    PURB                            ResetUrb;       /* RESET_PIPE after a failed transfer */
++
++    /* fallback when the interrupt pipe never answers: GET_REPORT through the
++     * control pipe every few milliseconds (timer + DPC) */
++    BOOLEAN                         CtlMode;
++    PURB                            CtlUrb;
++    ULONG                           CtlErrors;
++    KTIMER                          CtlTimer;
++    KDPC                            CtlDpc;
+     LONG                            PollActive;     /* 1 while an IRP is down in USBD */
+     LONG                            Stopping;
+     ULONG                           PollErrors;

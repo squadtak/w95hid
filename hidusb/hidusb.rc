@@ -1,0 +1,6 @@
+#define HID_FILETYPE        3
+#define HID_FILESUBTYPE     7
+#define HID_DESCRIPTION     "USB Miniport Driver for Input Devices"
+#define HID_INTERNALNAME    "HIDUSB.SYS"
+#define HID_ORIGINALNAME    "HIDUSB.SYS"
+#include "..\verinfo.ver"

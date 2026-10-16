@@ -1,0 +1,23 @@
+TARGETNAME=HIDCLASS
+TARGETTYPE=EXPORT_DRIVER
+TARGETPATH=obj
+DRIVERTYPE=WDM
+
+INCLUDES=$(BASEDIR)\inc; \
+         $(BASEDIR)\inc\win98; \
+         $(BASEDIR)\src\hid\inc
+
+# ntpnp.lib ahead of wdm.lib: OSR2.1 exports IoInvalidateDeviceRelations only
+# under NTPNP.SYS, not NTOSKRNL.EXE.
+# hidparse.lib is here, not in TARGETLIBS: for an EXPORT_DRIVER the build
+# only passes MACHINE_TARGETLIBS to the linker (HidP_* came up unresolved).
+MACHINE_TARGETLIBS=$(SDK_LIB_PATH)\ntpnp.lib \
+                   $(SDK_LIB_PATH)\hidparse.lib \
+                   $(SDK_LIB_PATH)\wdm.lib
+
+SOURCES=hidclass.c \
+        hidpdo.c \
+        hidclass.rc
+
+# makefile.inc: copy HIDCLASS.SYS to ..\driver once it is linked
+NTTARGETFILES=CopyToDriver

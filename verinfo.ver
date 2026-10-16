@@ -1,0 +1,55 @@
+/*
+ * verinfo.ver - the VERSIONINFO resource.  Included by the module's .rc file after
+ * it has defined (plain numbers, so no header is needed to run RC):
+ *
+ *   HID_FILETYPE     2 = VFT_DLL   3 = VFT_DRV   5 = VFT_VXD
+ *   HID_FILESUBTYPE  0 = none      7 = VFT2_DRV_SYSTEM
+ *   HID_DESCRIPTION  "..."         HID_INTERNALNAME / HID_ORIGINALNAME  "xxx.sys"
+ *   HID_FILEOS       (optional)    0x10004L for a VxD (VOS_DOS_WINDOWS32)
+ *   HID_VXD          (optional)    defined by a VxD's .rc: it is compiled by the
+ *                                  16-bit RC, which does not end a VALUE string with a
+ *                                  NUL by itself (the DDK's VERSION.H writes "...\0")
+ *
+ * FILEOS 4 = VOS__WINDOWS32.
+ */
+#include "hidver.h"
+
+/* the .sys / .dll default: VOS__WINDOWS32; a VxD sets 0x10004L (VOS_DOS_WINDOWS32) */
+#ifndef HID_FILEOS
+#define HID_FILEOS          0x4L
+#endif
+
+#ifdef HID_VXD
+#define HID_Z               "\0"
+#else
+#define HID_Z
+#endif
+
+1 VERSIONINFO
+ FILEVERSION    HID_VER_NUMBERS
+ PRODUCTVERSION HID_VER_NUMBERS
+ FILEFLAGSMASK  0x3fL
+ FILEFLAGS      0x0L
+ FILEOS         HID_FILEOS
+ FILETYPE       HID_FILETYPE
+ FILESUBTYPE    HID_FILESUBTYPE
+BEGIN
+    BLOCK "StringFileInfo"
+    BEGIN
+        BLOCK "040904E4"
+        BEGIN
+            VALUE "CompanyName",      HID_VER_COMPANY HID_Z
+            VALUE "FileDescription",  HID_DESCRIPTION HID_Z
+            VALUE "FileVersion",      HID_VER_STRING HID_Z
+            VALUE "InternalName",     HID_INTERNALNAME HID_Z
+            VALUE "LegalCopyright",   HID_VER_COPYRIGHT HID_Z
+            VALUE "OriginalFilename", HID_ORIGINALNAME HID_Z
+            VALUE "ProductName",      HID_VER_PRODUCT HID_Z
+            VALUE "ProductVersion",   HID_VER_STRING HID_Z
+        END
+    END
+    BLOCK "VarFileInfo"
+    BEGIN
+        VALUE "Translation", 0x0409, 0x04E4
+    END
+END

@@ -1,0 +1,25 @@
+LIBRARY     HIDPARSE.SYS
+
+EXPORTS
+    HidP_GetCollectionDescription
+    HidP_FreeCollectionDescription
+    HidP_GetCaps
+    HidP_GetLinkCollectionNodes
+    HidP_GetSpecificButtonCaps
+    HidP_GetSpecificValueCaps
+    HidP_GetUsages
+    HidP_MaxUsageListLength
+    HidP_SetUsages
+    HidP_UnsetUsages
+    HidP_GetUsageValue
+    HidP_GetScaledUsageValue
+    HidP_SetUsageValue
+    HidP_MaxDataListLength
+    HidP_GetData
+    HidP_InitializeReportForID
+    HidP_UsageListDifference
+    HidP_GetUsagesEx
+    HidP_SetScaledUsageValue
+    HidP_GetUsageValueArray
+    HidP_SetUsageValueArray
+    HidP_SetData

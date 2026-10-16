@@ -1,0 +1,6 @@
+#define HID_FILETYPE        1
+#define HID_FILESUBTYPE     0
+#define HID_DESCRIPTION     "HID Audio Control Service"
+#define HID_INTERNALNAME    "hidserv"
+#define HID_ORIGINALNAME    "HIDSERV.EXE"
+#include "..\verinfo.ver"

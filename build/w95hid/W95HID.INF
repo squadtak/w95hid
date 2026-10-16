@@ -1,0 +1,120 @@
+; W95HID.INF - USB HID support for Windows 95 OSR2.1
+;
+; Binds HIDUSB.SYS to USB HID devices (compatible ID USB\Class_03) and installs all
+; files of the port (HIDCLASS, HIDPARSE, HIDEXT, HID.DLL, KBDHID, MOUHID).
+; Needs the OSR2.1 USB supplement.  Class HID is created here because
+; OSR2.1 does not have it; it is the Win98 HIDDEV.INF layout.
+;
+; The keyboard and mouse nodes (W95HIDKB.INF, W95HIDMS.INF) copy their own VxD the
+; same way: only when it is missing.
+;
+; Installing a USB HID device copies the files that are missing (flag 16 = do not
+; overwrite: an existing file is skipped without needing the source, so a new device
+; never asks where the files are).  To put new builds in place, install this INF
+; itself (right-click -> Install, [DefaultInstall]): that one always overwrites.
+; (A proper installer is to follow.)
+
+[Version]
+Signature="$CHICAGO$"
+Class=HID
+ClassGUID={745a17a0-74d3-11d0-b6fe-00a0c90f57da}
+Provider=%SQUAD%
+
+[ClassInstall]
+AddReg=HIDClassReg
+
+[HIDClassReg]
+HKR,,,0,%HIDClassDescription%
+HKR,,Icon,,-24
+
+[SourceDisksNames]
+1=%DiskName%,,0
+
+[SourceDisksFiles]
+hidusb.sys=1
+hidclass.sys=1
+hidparse.sys=1
+hidext.vxd=1
+hid.dll=1
+kbdhid.vxd=1
+mouhid.vxd=1
+
+[DestinationDirs]
+DefaultDestDir=11
+HidSys.Copy=10,system32\drivers
+HidSys.Force=10,system32\drivers
+HidVxd.Copy=11
+HidVxd.Force=11
+
+[ControlFlags]
+
+[Manufacturer]
+%UnknownMfg%=UnknownMfg
+
+; Most specific compatible ID first: a more specific match ranks better than
+; a driver installed from a plain USB\Class_03 match, so this INF can also
+; replace an earlier install (Update Driver).
+[UnknownMfg]
+%USB\Class_03&SubClass_01&Prot_01.DeviceDesc%=USBHIDDevice,USB\Class_03&SubClass_01&Prot_01
+%USB\Class_03&SubClass_01&Prot_02.DeviceDesc%=USBHIDDevice,USB\Class_03&SubClass_01&Prot_02
+%USB\Class_03&SubClass_01.DeviceDesc%=USBHIDDevice,USB\Class_03&SubClass_01
+%USB\Class_03%=USBHIDDevice,USB\Class_03
+%HID_DEVICE%=HIDCollection,HID_DEVICE
+
+; Collection nodes made by HIDCLASS that no other INF claims:
+; "HID-compliant device", no driver.
+[HIDCollection]
+
+[USBHIDDevice]
+CopyFiles=HidSys.Copy,HidVxd.Copy
+AddReg=USBHIDDevice.AddReg,HidExt.AddReg
+
+[USBHIDDevice.AddReg]
+HKR,,DevLoader,,*ntkern
+HKR,,NTMPDriver,,"hidusb.sys"
+
+; Install this INF itself: put every file in place (overwriting) and register HIDEXT.
+[DefaultInstall]
+CopyFiles=HidSys.Force,HidVxd.Force
+AddReg=HidExt.AddReg
+
+; SYSTEM32\DRIVERS: the drivers
+[HidSys.Copy]
+hidusb.sys,,,16
+hidclass.sys,,,16
+hidparse.sys,,,16
+
+[HidSys.Force]
+hidusb.sys
+hidclass.sys
+hidparse.sys
+
+; SYSTEM: HIDEXT.VXD (the helper that tells HIDCLASS about the shutdown; a static
+; VxD, loaded at the next boot - without it the system hangs on "Please wait while
+; your computer shuts down" with a HID device attached), the user-mode API
+; (HidD_*, HidP_*) and the keyboard / mouse VxDs.
+[HidVxd.Copy]
+hidext.vxd,,,16
+hid.dll,,,16
+kbdhid.vxd,,,16
+mouhid.vxd,,,16
+
+[HidVxd.Force]
+hidext.vxd
+hid.dll
+kbdhid.vxd
+mouhid.vxd
+
+[HidExt.AddReg]
+HKLM,"System\CurrentControlSet\Services\VxD\HIDEXT","StaticVxD",,"hidext.vxd"
+
+[Strings]
+HID_DEVICE="HID-compliant device"
+SQUAD="Takuya Ohara"
+DiskName="USB HID Class Driver for Windows 95 Install disk"
+UnknownMfg="(Standard device)"
+HIDClassDescription="Human Interface Devices"
+USB\Class_03="USB Human Interface Device"
+USB\Class_03&SubClass_01&Prot_01.DeviceDesc="USB Human Interface Device"
+USB\Class_03&SubClass_01&Prot_02.DeviceDesc="USB Human Interface Device"
+USB\Class_03&SubClass_01.DeviceDesc="USB Human Interface Device"

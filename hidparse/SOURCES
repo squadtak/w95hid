@@ -1,0 +1,17 @@
+TARGETNAME=HIDPARSE
+TARGETTYPE=EXPORT_DRIVER
+TARGETPATH=obj
+DRIVERTYPE=WDM
+
+INCLUDES=$(BASEDIR)\inc; \
+         $(BASEDIR)\inc\win98; \
+         $(BASEDIR)\src\hid\inc
+
+C_DEFINES=-DHP_KERNEL
+
+SOURCES=hidparse.c \
+        hidpmain.c \
+        hidparse.rc
+
+# makefile.inc: copy HIDPARSE.SYS to ..\driver once it is linked
+NTTARGETFILES=CopyToDriver

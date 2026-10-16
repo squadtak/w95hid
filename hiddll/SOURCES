@@ -1,0 +1,8 @@
+#
+# HID.DLL is built by the nmake rules in "makefile" (cl + link -DLL), not by the
+# DDK makefile.def; build only has to run that makefile.
+#
+TARGETNAME=HID
+TARGETTYPE=NOTARGET
+TARGETPATH=obj
+SOURCES=

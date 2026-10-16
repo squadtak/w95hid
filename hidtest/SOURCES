@@ -1,0 +1,8 @@
+#
+# HIDTEST.EXE is built by the nmake rules in "makefile" (cl), not by the DDK
+# makefile.def; build only has to run that makefile.
+#
+TARGETNAME=HIDTEST
+TARGETTYPE=NOTARGET
+TARGETPATH=obj
+SOURCES=
