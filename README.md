@@ -19,7 +19,9 @@ MSVC5.0 + Win98 DDK
 build -cZ
 
 all the created files copied on /build/w95hid
-in win95, right click the three inf, install, restart, and then plugged in the usb device, ho-la-la!
+
+in win95, right click the three inf, install, restart, and then plugged in the usb device, oh-la-la!
+
 Debug messages can be checked using dbgview
 
 # Known Issues
