@@ -9,7 +9,7 @@ with claude support.
 # Implemented
 HID Keyboard
 
-HID Mouse (with limited wheel support, check known issues)
+HID Mouse (limited wheel support, needs Microsoft IntelliPoint 4.0 driver, and check known issues)
 
 Generic HID
 
