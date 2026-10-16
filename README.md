@@ -11,7 +11,7 @@ HID Keyboard
 
 HID Mouse (limited wheel support, needs Microsoft IntelliPoint 4.0 driver, and check known issues)
 
-Generic HID
+Generic HID (for gamepad etc... not tested)
 
 # Build
 MSVC5.0 + Win98 DDK
