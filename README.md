@@ -25,6 +25,7 @@ in win95, right click the three infs, install, restart, and then plugged in the 
 Debug messages can be checked using dbgview
 
 # Known Issues
-Microsoft's original usbsupp, as well as LoneCrusader and Rloew's openhci.sys and usbd.sys, cannot recognize devices with multiple endpoints. Only one endpoint per device is recognized.
-
+* Microsoft's original usbsupp, as well as LoneCrusader and Rloew's openhci.sys and usbd.sys, cannot recognize devices with multiple endpoints. Only one endpoint per device is recognized.
 All of the mice I own use two endpoints: one for the mouse button and one for the scroll wheel. Because of this, the scroll wheel doesn't work.
+
+* Oracle VM VirtualBox 7.2.20 r175154 running Windows 95 OSR2.5+xusbsupp, the keyboard behaves abnormally. Keys sometimes get stuck, or the system freezes.
