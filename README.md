@@ -9,7 +9,7 @@ with claude support.
 # Implemented
 HID Keyboard
 
-HID Mouse (with limited wheel support)
+HID Mouse (with limited wheel support, check known issues)
 
 Generic HID
 
@@ -18,9 +18,9 @@ MSVC5.0 + Win98 DDK
 
 build -cZ
 
-all the created files copied on /build/w95hid
+all generated files are copied to /build/w95hid
 
-in win95, right click the three inf, install, restart, and then plugged in the usb device, oh-la-la!
+in win95, right click the three infs, install, restart, and then plugged in the usb device, oh-la-la!
 
 Debug messages can be checked using dbgview
 
